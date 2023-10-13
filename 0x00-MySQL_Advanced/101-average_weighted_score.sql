@@ -5,7 +5,7 @@ DELIMITER //
 CREATE PROCEDURE ComputeAverageWeightedScoreForUsers()
 BEGIN
     DECLARE user_id INT;
-    DECLARE total_score DECIMAL(10, 2);
+    DECLARE total_weighted_score DECIMAL(10, 2);
     DECLARE total_weight DECIMAL(10, 2);
     DECLARE avg_weighted_score DECIMAL(10, 2);
 
@@ -16,20 +16,18 @@ BEGIN
     -- Open cursor
     OPEN user_cursor;
 
-    -- Fetch first user ID
-    FETCH NEXT FROM user_cursor INTO user_id;
-
     -- Loop through each user ID
+    FETCH NEXT FROM user_cursor INTO user_id;
     WHILE user_id IS NOT NULL DO
-        -- Compute the total score and total weight for the user
+        -- Compute the total weighted score and total weight for the user
         SELECT SUM(score * weight), SUM(weight)
-        INTO total_score, total_weight
+        INTO total_weighted_score, total_weight
         FROM scores
         WHERE user_id = user_id;
 
         -- Compute the average weighted score
         IF total_weight > 0 THEN
-            SET avg_weighted_score = total_score / total_weight;
+            SET avg_weighted_score = total_weighted_score / total_weight * 100;
         ELSE
             SET avg_weighted_score = 0;
         END IF;
