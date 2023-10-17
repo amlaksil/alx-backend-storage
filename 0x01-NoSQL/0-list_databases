@@ -1,19 +1,2 @@
-// Script to list all databases in MongoDB
-
-var serverStatus = db.runCommand({ serverStatus: 1 });
-var version = serverStatus.version;
-var storageEngine = serverStatus.storageEngine.name;
-
-print("MongoDB shell version v" + version);
-print("connecting to: " + db.getMongo().host);
-print("MongoDB server version: " + version);
-
-// Get the list of database names
-var databaseNames = db.adminCommand({ listDatabases: 1 }).databases;
-
-// Print the database names with their sizes
-databaseNames.forEach(function(database) {
-  print(database.name + "\t" + (database.sizeOnDisk / (1024 * 1024)).toFixed(3) + "GB");
-});
-
-print("bye");
+// a script that lists all databases
+show dbs
