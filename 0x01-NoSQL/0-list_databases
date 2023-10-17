@@ -1,0 +1,9 @@
+// Script to list all databases in MongoDB
+
+// Get the list of database names
+const databaseNames = db.adminCommand({ listDatabases: 1 }).databases;
+
+// Print the database names
+for (const i = 0; i < databaseNames.length; i++) {
+  print(databaseNames[i].name);
+}
