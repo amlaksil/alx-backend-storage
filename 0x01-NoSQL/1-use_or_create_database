@@ -1,5 +1,2 @@
-# Connect to the MongoDB server and switch to the admin database
-mongo
-
-# Create or use the "my_db" database
+// Create or use the "my_db" database
 use my_db
