@@ -7,7 +7,27 @@ This module provides a Cache class for storing data in Redis with random keys.
 """
 import redis
 import uuid
+import functools
 from typing import Union, Callable, Optional
+
+
+def count_calls(fn: Callable) -> Callable:
+    """
+    Decorator that counts the number of times a method is called and
+    stores the count in Redis.
+
+    Args:
+        fn (Callable): The method to be decorated.
+
+    Returns:
+        Callable: The decorated method.
+    """
+    @functools.wraps(fn)
+    def wrapper(self, data):
+        key = fn.__qualname__
+        self._redis.incr(key)
+        return fn(self, data)
+    return wrapper
 
 
 class Cache:
@@ -29,6 +49,7 @@ class Cache:
         # Clear any existing data before starting
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Stores the provided data in Redis with a randomly generated key.
