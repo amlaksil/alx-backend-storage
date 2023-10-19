@@ -8,25 +8,26 @@ This module provides a Cache class for storing data in Redis with random keys.
 import redis
 import uuid
 import functools
-from typing import Union, Callable, Optional
+from typing import Union, Callable, Optional, List
 
 
-def count_calls(fn: Callable) -> Callable:
+def count_calls(method: Callable) -> Callable:
     """
     Decorator that counts the number of times a method is called and
     stores the count in Redis.
 
     Args:
-        fn (Callable): The method to be decorated.
+        method (Callable): The method to be decorated.
 
     Returns:
         Callable: The decorated method.
     """
-    @functools.wraps(fn)
-    def wrapper(self, data):
-        key = fn.__qualname__
-        self._redis.incr(key)
-        return fn(self, data)
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        key = method.__qualname__  # Use the qualified name of the method
+        self._redis.incr(key)  # Increment the count for the method key
+        return method(self, *args, **kwargs)
+
     return wrapper
 
 
@@ -142,3 +143,47 @@ class Cache:
             None if the key does not exist.
         """
         return self.get(key, int)
+
+    def get_all_inputs(self, method_name: str) -> List[str]:
+        """
+        Retrieves all the input arguments for a given method from Redis.
+
+        Args:
+            method_name (str): The name of the method.
+
+        Returns:
+            List[str]: The list of input arguments.
+        """
+        input_key = method_name + ":inputs"
+        return self._redis.lrange(input_key, 0, -1)
+
+    def get_all_outputs(self, method_name: str) -> List[str]:
+        """
+        Retrieves all the output values for a given method from Redis.
+
+        Args:
+            method_name (str): The name of the method.
+
+        Returns:
+            List[str]: The list of output values.
+        """
+        output_key = method_name + ":outputs"
+        return self._redis.lrange(output_key, 0, -1)
+
+
+def replay(func):
+    """
+    Displays the history of calls for a particular function.
+
+    Args:
+        func: The function whose history of calls to display.
+    """
+    cache = Cache()
+    method_name = func.__qualname__
+
+    inputs = cache.get_all_inputs(method_name)
+    outputs = cache.get_all_outputs(method_name)
+
+    print(f"{method_name} was called {len(inputs)} times:")
+    for input_args, output in zip(inputs, outputs):
+        print(f"{method_name}{input_args.decode()} -> {output.decode()}")
