@@ -2,14 +2,20 @@
 
 """
 Module: web
+
+This module provides the get_page function and the cache_result
+decorator, which can be used to fetch the HTML content of a URL
+and cache the results with a specified expiration time.
 """
 
+from functools import wraps
 import requests
-import functools
 import time
 
+CACHE = {}
 
-def cache(expiration_time):
+
+def cache_result(expiration_time):
     """
     A decorator that caches the result of a function with a given
     expiration time.
@@ -23,9 +29,7 @@ def cache(expiration_time):
 
     """
     def decorator(func):
-        cached_results = {}
-
-        @functools.wraps(func)
+        @wraps(func)
         def wrapper(url):
             """
             Retrieves the HTML content of a given URL and caches the result.
@@ -37,22 +41,26 @@ def cache(expiration_time):
                 str: The HTML content of the URL.
 
             """
-            if url in cached_results:
-                result, timestamp = cached_results[url]
-                current_time = time.time()
-                if current_time - timestamp < expiration_time:
-                    return result
+            if url in CACHE and time.time() - CACHE[url]['timestamp']\
+               < expiration_time:
+                # Return the cached content if it is still valid
+                CACHE[url]['count'] += 1
+                return CACHE[url]['content']
 
-            result = func(url)
-            cached_results[url] = (result, time.time())
-            return result
+            # Retrieve the content from the URL
+            response = func(url)
+
+            # Cache the content along with the timestamp and count
+            CACHE[url] = {
+                'content': response, 'count': 1, 'timestamp': time.time()}
+
+            return response
 
         return wrapper
-
     return decorator
 
 
-@cache(expiration_time=10)
+@cache_result(10)
 def get_page(url):
     """
     Retrieves the HTML content of a particular URL.
@@ -68,6 +76,4 @@ def get_page(url):
 
     """
     response = requests.get(url)
-    content = response.text
-
-    return content
+    return response.text
