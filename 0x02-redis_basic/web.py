@@ -10,12 +10,14 @@ and cache the results with a specified expiration time.
 
 from functools import wraps
 import requests
+import redis
 import time
 
-CACHE = {}
+# Initialize Redis client
+redis_client = redis.Redis()
 
 
-def cache_result(expiration_time):
+def cache_result(expiration_time: int):
     """
     A decorator that caches the result of a function with a given
     expiration time.
@@ -41,18 +43,28 @@ def cache_result(expiration_time):
                 str: The HTML content of the URL.
 
             """
-            if url in CACHE and time.time() - CACHE[url]['timestamp']\
-               < expiration_time:
-                # Return the cached content if it is still valid
-                CACHE[url]['count'] += 1
-                return CACHE[url]['content']
+            # Generate a unique cache key for the URL
+            cache_key = f"cache:{url}"
+
+            # Check if the URL is in Redis cache and the cache is still valid
+            if redis_client.exists(cache_key) and\
+               time.time() - float(redis_client.hget(
+                   cache_key, 'timestamp')) < expiration_time:
+                # Increase the cache hit count
+                redis_client.hincrby(cache_key, 'count', 1)
+                # Return the cached content
+                return redis_client.hget(cache_key, 'content').decode('utf-8')
 
             # Retrieve the content from the URL
             response = func(url)
 
-            # Cache the content along with the timestamp and count
-            CACHE[url] = {
-                'content': response, 'count': 1, 'timestamp': time.time()}
+            # Cache the content in Redis along with the timestamp and count
+            redis_client.hset(cache_key, 'content', response)
+            redis_client.hincrby(cache_key, 'count', 1)
+            redis_client.hset(cache_key, 'timestamp', time.time())
+
+            # Set the expiration time for the cache key
+            redis_client.expire(cache_key, expiration_time)
 
             return response
 
@@ -61,7 +73,7 @@ def cache_result(expiration_time):
 
 
 @cache_result(10)
-def get_page(url):
+def get_page(url: str) -> str:
     """
     Retrieves the HTML content of a particular URL.
 
